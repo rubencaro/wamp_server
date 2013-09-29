@@ -37,6 +37,7 @@ EM.synchrony do
 
     ws.onopen do
       puts "Client connected"
+      ws.send 'hi fella'
     end
 
     ws.onmessage do |msg, type|
