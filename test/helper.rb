@@ -2,6 +2,7 @@ require 'minitest/pride'
 require 'minitest/autorun'
 require 'websocket-eventmachine-client'
 require 'pty'
+require 'socket'
 
 def force_constant(klass, name, value)
   previous_value = klass.send(:remove_const, name)
@@ -28,9 +29,17 @@ def clean_test_stuff
   `pkill -f '#{SERVER_CMD}'`
 end
 
+def is_online?
+  s = TCPSocket.new 'localhost', 3000
+  s.close
+  true
+rescue Errno::ECONNREFUSED
+  false
+end
+
 def wait_for_server_to_be_online
   print "Waiting for server to be online..."
-  while `echo 'quit' | telnet 0.0.0.0 3000 2>&1 | grep -c 'Connected'`.to_i == 0 do
+  while not is_online? do
     print '.'
     sleep 0.2
   end
