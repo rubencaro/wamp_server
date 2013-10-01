@@ -3,6 +3,7 @@ require 'minitest/autorun'
 require 'websocket-eventmachine-client'
 require 'pty'
 require 'socket'
+require 'timeout'
 
 def force_constant(klass, name, value)
   previous_value = klass.send(:remove_const, name)
@@ -10,14 +11,41 @@ def force_constant(klass, name, value)
   previous_value
 end
 
-def run_ws_client(cb_onopen, cb_onmessage, cb_onclose, opts = {})
-  timeout = opts[:timeout] || 5
+def run_ws_client(opts = {})
+
+  cb_onopen = opts[:onopen] || lambda{ |ws,info| }
+  cb_onmessage = opts[:onmessage] || lambda{ |ws,msg,type,info| ws.close } # remember to close ws !
+  cb_onclose = opts[:onclose] || lambda{ |ws,info| }
+
+  info = {} # hash to gather info
+  connection_timeout = opts[:connection_timeout] || 1 # timeout until onopen
+  message_timeout = opts[:message_timeout] || 3       # timeout between messages
   EM.run do
+
+    timer = EM::Timer.new(connection_timeout){ raise Timeout::Error.new "Waited #{connection_timeout} seconds !" }
     ws = WebSocket::EventMachine::Client.connect(:uri => 'ws://0.0.0.0:3000')
-    ws.onopen{ cb_onopen.call(ws) }
-    ws.onmessage{ |msg, type| cb_onmessage.call(ws,msg,type) }
-    ws.onclose { cb_onclose.call(ws) }
+
+    ws.onopen do
+      timer.cancel
+      cb_onopen.call(ws,info)
+      timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
+    end
+
+    ws.onmessage do |msg, type|
+      timer.cancel
+      info[:messages] ||= []
+      info[:messages] << msg
+      cb_onmessage.call(ws,msg,type,info)
+      timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
+    end
+
+    ws.onclose do
+      timer.cancel
+      cb_onclose.call(ws,info)
+      EM.stop
+    end
   end
+  info
 end
 
 ##
@@ -43,7 +71,6 @@ def wait_for_server_to_be_online
     print '.'
     sleep 0.2
   end
-  puts '.'
 end
 
 Minitest.after_run{ clean_test_stuff }
