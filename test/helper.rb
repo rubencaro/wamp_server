@@ -4,6 +4,10 @@ require 'websocket-eventmachine-client'
 require 'pty'
 require 'socket'
 require 'timeout'
+require 'json'
+
+$:.unshift File.expand_path('../lib')
+require 'log_helpers'
 
 def force_constant(klass, name, value)
   previous_value = klass.send(:remove_const, name)
@@ -46,6 +50,16 @@ def run_ws_client(opts = {})
     end
   end
   info
+end
+
+def check_is_json(txt)
+  begin
+    data = JSON.parse(txt)
+  rescue => err
+    H.log_ex err, msg: "Is not JSON: #{txt}"
+  end
+  assert !data.nil?, msg: "Is not JSON: #{txt}"
+  data
 end
 
 ##

@@ -4,6 +4,9 @@ require 'mongo'
 require 'em-synchrony'
 require 'mongo-em-patch'
 require 'fiber'
+require 'json'
+$:.unshift File.expand_path('lib')
+require 'wamp'
 
 module AppLogic
   def self.do_things
@@ -36,8 +39,7 @@ EM.synchrony do
   MyServer.start(:host => host, :port => port) do |ws|
 
     ws.onopen do
-      puts "Client connected"
-      ws.send 'hi fella'
+      ws.send [WAMP::WELCOME, 'sessionId', 1, 'WAMP_server'].to_json
     end
 
     ws.onmessage do |msg, type|
@@ -50,7 +52,6 @@ EM.synchrony do
     end
 
     ws.onclose do
-      puts "Client disconnected"
     end
 
   end
