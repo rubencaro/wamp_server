@@ -6,7 +6,11 @@ module Helpers
     @@palette = [:dark_gray, :light_gray]
 
     def log(msg, opts = {})
-      opts[:location] ||= caller_locations(1,1)[0].label
+      if defined?(caller_locations) then
+        opts[:location] ||= caller_locations(1,1)[0].label # much faster than 'caller'
+      else
+        opts[:location] ||= caller[0].sub(/^.*`(.*)'$/,"#{$1}") # much slower than 'caller_locations'
+      end
 
       msg = "[#{opts[:location]}] #{msg}" if not opts[:clean]
 
