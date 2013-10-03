@@ -27,7 +27,7 @@ class MyServer < WebSocket::EventMachine::Server
 
   def self.stop
     puts "Terminating WebSocket Server"
-    EventMachine.stop
+    EM.stop
   end
 end
 
