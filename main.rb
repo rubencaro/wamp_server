@@ -16,8 +16,14 @@ module AppLogic
 end
 
 class MyServer < WebSocket::EventMachine::Server
+  VERSION='0.1'
+
   def self.pool=(value); @@pool = value; end
   def self.pool; @@pool; end
+
+  def self.stamp
+    "#{self.name} #{VERSION}"
+  end
 
   def self.stop
     puts "Terminating WebSocket Server"
@@ -39,7 +45,7 @@ EM.synchrony do
   MyServer.start(:host => host, :port => port) do |ws|
 
     ws.onopen do
-      ws.send [WAMP::WELCOME, 'sessionId', 1, 'WAMP_server'].to_json
+      ws.send [WAMP::WELCOME, WAMP.new_session_id, 1, MyServer.stamp].to_json
     end
 
     ws.onmessage do |msg, type|

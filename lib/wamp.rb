@@ -12,4 +12,8 @@ module WAMP
   PUBLISH = 7
   EVENT = 8
 
+  def self.new_session_id
+    Time.now.strftime('%s%9N')
+  end
+
 end
