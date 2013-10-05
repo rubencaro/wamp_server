@@ -1,4 +1,5 @@
 # see http://wamp.ws/spec
+require 'json'
 
 module WAMP
 

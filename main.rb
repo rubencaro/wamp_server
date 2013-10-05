@@ -49,11 +49,15 @@ EM.synchrony do
     end
 
     ws.onmessage do |msg, type|
-      t1 = Time.now
       puts "Received message: #{msg}"
       Fiber.new do
-        res = AppLogic.do_things
-        ws.send res.to_s + " Took #{Time.now - t1} secs" , :type => type
+        begin
+          call = JSON.parse msg
+        rescue JSON::ParserError
+          ws.send( { :error => 'Message is not JSON !' }.to_json )
+        else
+          AppLogic.route ws,call
+        end
       end.resume
     end
 
