@@ -14,7 +14,8 @@ module WAMP
   EVENT = 8
 
   def self.new_session_id
-    Time.now.strftime('%s%9N')
+    t = Time.now
+    "#{t.to_i}#{t.nsec}"
   end
 
 end

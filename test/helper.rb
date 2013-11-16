@@ -6,7 +6,7 @@ require 'socket'
 require 'timeout'
 require 'json'
 
-$:.unshift File.expand_path('../lib')
+$:.unshift File.expand_path(__dir__ + '/../lib')
 require 'log_helpers'
 
 def force_constant(klass, name, value)
@@ -67,10 +67,6 @@ end
 
 SERVER_CMD="ruby main.rb"
 
-def clean_test_stuff
-  `pkill -f '#{SERVER_CMD}'`
-end
-
 def is_online?
   s = TCPSocket.new 'localhost', 3000
   s.close
@@ -85,6 +81,20 @@ def wait_for_server_to_be_online
     print '.'
     sleep 0.2
   end
+end
+
+def wait_for_server_to_be_offline
+  print "Ensuring server is offline..."
+  while is_online? do
+    print '.'
+    sleep 0.2
+  end
+  puts 'ok'
+end
+
+def clean_test_stuff
+  `pkill -f '#{SERVER_CMD}'`
+  wait_for_server_to_be_offline
 end
 
 Minitest.after_run{ clean_test_stuff }

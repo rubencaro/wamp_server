@@ -1,4 +1,4 @@
-require 'helper'
+require_relative 'helper'
 require 'wamp'
 
 class TestMain < Minitest::Test
@@ -14,7 +14,6 @@ class TestMain < Minitest::Test
   def test_welcome
     cb = lambda do |ws,msg,type,info|
       data = check_is_json msg
-      H.spit data
       # [ TYPE_ID_WELCOME , sessionId , protocolVersion, serverIdent ]
       assert_equal 4, data.count
       assert_equal WAMP::WELCOME, data[0]
@@ -23,6 +22,10 @@ class TestMain < Minitest::Test
     end
     info = run_ws_client onmessage: cb
     assert_equal 1, info[:messages].count
+  end
+
+  def test_call
+
   end
 
 end
