@@ -14,6 +14,8 @@ EM.synchrony do
   port = '3000'
 
   trap("INT") { WampServer.stop }
+  trap("TERM") { WampServer.stop }
+  trap("KILL") { WampServer.stop }
 
   WampServer.db = FiberConnectionPool.new(:size => 5) do
                     Mongo::Connection.new.db('bogusdb')
@@ -23,7 +25,9 @@ EM.synchrony do
   WampServer.start(:host => host, :port => port) do |ws|
 
     ws.onopen do
-      ws.send WampServer.welcome
+      Fiber.new do
+        ws.send WampServer.welcome(ws)
+      end.resume
     end
 
     ws.onmessage do |msg, type|
@@ -34,12 +38,15 @@ EM.synchrony do
         rescue JSON::ParserError
           ws.send( WampServer::RESPONSES[:not_json] )
         else
-          AppLogic.route ws,call
+          App.route ws,call
         end
       end.resume
     end
 
     ws.onclose do
+      Fiber.new do
+        ws.send App.remove_session(ws)
+      end.resume
     end
 
   end

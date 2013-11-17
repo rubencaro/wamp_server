@@ -24,8 +24,13 @@ class TestMain < Minitest::Test
     assert_equal 1, info[:messages].count
   end
 
-  def test_call
+  def test_prefix
+  end
 
+  def test_rpc
+  end
+
+  def test_pubsub
   end
 
 end

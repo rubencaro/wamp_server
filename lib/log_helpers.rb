@@ -18,7 +18,7 @@ module Helpers
         msg = send(opts[:color],msg)
       end
 
-      msg = "[#{Time.now}]" + msg if not opts[:clean]
+      msg = "[#{Time.now.strftime('%F %T')}]" + msg if not opts[:clean]
       puts msg
       $stdout.flush # as soon as possible
     end

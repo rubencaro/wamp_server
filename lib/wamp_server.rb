@@ -1,6 +1,7 @@
 require 'websocket-eventmachine-server'
 require 'json'
 require 'wamp'
+require 'log_helpers'
 
 class WampServer < WebSocket::EventMachine::Server
   VERSION = '0.1'
@@ -14,12 +15,15 @@ class WampServer < WebSocket::EventMachine::Server
     "#{self.name} #{VERSION}"
   end
 
-  def self.welcome
-    [WAMP::WELCOME, WAMP.new_session_id, 1, WampServer.stamp].to_json
+  def self.welcome(ws)
+    App.init_session(ws)
+    H.log "Welcome #{ws.object_id}"
+    [WAMP::WELCOME, ws.object_id, 1, WampServer.stamp].to_json
   end
 
   def self.stop
-    puts "Terminating WebSocket Server"
+    H.log "Terminating WebSocket Server"
+    App.clear_sessions
     EM.stop
   end
 end

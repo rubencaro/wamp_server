@@ -1,9 +1,21 @@
+require 'log_helpers'
 require 'wamp_server'
-require 'fiber'
 
-module AppLogic
-  def self.do_things
-    res = MyServer.db.collection('bogus').find( :$where => "sleep(2000)" ).count
-    "Done #{Thread.current.to_s}, #{Fiber.current.to_s} res:#{res.inspect}"
+module App
+  def self.init_session(ws)
+    WampServer.db['sessions'].insert({ :ws => ws.object_id })
+  end
+
+  def self.clear_sessions
+    WampServer.db['sessions'].remove
+  end
+
+  def self.remove_session(ws)
+    H.log "Goobye #{ws.object_id}"
+    WampServer.db['sessions'].remove :ws => ws.object_id
+  end
+
+  def self.route(ws,call)
+    H.log "Routing call: #{call}"
   end
 end

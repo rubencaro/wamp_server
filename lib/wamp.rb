@@ -13,9 +13,4 @@ module WAMP
   PUBLISH = 7
   EVENT = 8
 
-  def self.new_session_id
-    t = Time.now
-    "#{t.to_i}#{t.nsec}"
-  end
-
 end

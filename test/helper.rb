@@ -15,6 +15,10 @@ def force_constant(klass, name, value)
   previous_value
 end
 
+def get_db
+  Mongo::Connection.new.db('bogusdb')
+end
+
 def run_ws_client(opts = {})
 
   cb_onopen = opts[:onopen] || lambda{ |ws,info| }
