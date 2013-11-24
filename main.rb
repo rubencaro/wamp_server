@@ -1,3 +1,5 @@
+require 'rubygems'
+require 'bundler/setup'
 require 'fiber_connection_pool'
 require 'mongo'
 require 'em-synchrony'
@@ -20,6 +22,8 @@ EM.synchrony do
   WampServer.db = FiberConnectionPool.new(:size => 5) do
                     Mongo::Connection.new.db('bogusdb')
                   end
+
+  App.init
 
   H.log "Listening on #{host}:#{port}", :clean => true
   WampServer.start(:host => host, :port => port) do |ws|

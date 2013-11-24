@@ -23,7 +23,6 @@ class WampServer < WebSocket::EventMachine::Server
 
   def self.stop
     H.log "Terminating WebSocket Server"
-    App.clear_sessions
     EM.stop
   end
 end
