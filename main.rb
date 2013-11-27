@@ -1,9 +1,6 @@
 require 'rubygems'
 require 'bundler/setup'
-require 'fiber_connection_pool'
-require 'mongo'
 require 'em-synchrony'
-require 'mongo-em-patch'
 require 'json'
 $:.unshift File.expand_path('lib')
 require 'wamp'
@@ -18,10 +15,6 @@ EM.synchrony do
   trap("INT") { WampServer.stop }
   trap("TERM") { WampServer.stop }
   trap("KILL") { WampServer.stop }
-
-  WampServer.db = FiberConnectionPool.new(:size => 5) do
-                    Mongo::Connection.new.db('bogusdb')
-                  end
 
   App.init
 

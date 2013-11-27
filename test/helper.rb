@@ -79,18 +79,22 @@ rescue Errno::ECONNREFUSED
   false
 end
 
-def wait_for_server_to_be_online
+def wait_for_server_to_be_online(timeout = 5)
   print "Waiting for server to be online..."
+  t = Time.now
   while not is_online? do
     print '.'
+    raise Timeout::Error.new "Waited #{timeout} seconds !" if Time.now - t > timeout
     sleep 0.2
   end
 end
 
-def wait_for_server_to_be_offline
+def wait_for_server_to_be_offline(timeout = 5)
   print "Ensuring server is offline..."
+  t = Time.now
   while is_online? do
     print '.'
+    raise Timeout::Error.new "Waited #{timeout} seconds !" if Time.now - t > timeout
     sleep 0.2
   end
   puts 'ok'

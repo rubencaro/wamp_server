@@ -8,9 +8,6 @@ class WampServer < WebSocket::EventMachine::Server
 
   RESPONSES = { :not_json => { :error => 'Message is not JSON !' }.to_json }
 
-  def self.db=(value); @@db = value; end
-  def self.db; @@db; end
-
   def self.stamp
     "#{self.name} #{VERSION}"
   end
