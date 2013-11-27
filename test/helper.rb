@@ -5,6 +5,7 @@ require 'pty'
 require 'socket'
 require 'timeout'
 require 'json'
+require 'mongo'
 
 $:.unshift File.expand_path(__dir__ + '/../lib')
 require 'log_helpers'
@@ -75,7 +76,7 @@ def is_online?
   s = TCPSocket.new 'localhost', 3000
   s.close
   true
-rescue Errno::ECONNREFUSED
+rescue Errno::ECONNREFUSED, Errno::ECONNRESET
   false
 end
 

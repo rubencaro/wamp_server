@@ -22,28 +22,36 @@ EM.synchrony do
   WampServer.start(:host => host, :port => port) do |ws|
 
     ws.onopen do
-      Fiber.new do
-        ws.send WampServer.welcome(ws)
-      end.resume
+      H.spit 'welcome'
+      ws.send ['hola'].to_json
+#      Fiber.new do
+#        ws.send WampServer.welcome(ws)
+#      end.resume
     end
 
     ws.onmessage do |msg, type|
+      H.spit msg
       H.log "Received message: #{msg}"
-      Fiber.new do
-        begin
-          call = JSON.parse msg
-        rescue JSON::ParserError
-          ws.send( WampServer::RESPONSES[:not_json] )
-        else
-          App.route ws,call
-        end
-      end.resume
+#      Fiber.new do
+#        begin
+#          call = JSON.parse msg
+#        rescue JSON::ParserError
+#          ws.send( WampServer::RESPONSES[:not_json] )
+#        else
+#          if call.first == WAMP::PREFIX then
+#            App.save_prefix ws, call
+#          else # rpc or pubsub
+#            App.route ws,call
+#          end
+#        end
+#      end.resume
     end
 
     ws.onclose do
-      Fiber.new do
-        ws.send App.remove_session(ws)
-      end.resume
+            H.spit 'close'
+#      Fiber.new do
+#        ws.send App.remove_session(ws)
+#      end.resume
     end
 
   end
