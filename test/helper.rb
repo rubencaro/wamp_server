@@ -67,6 +67,20 @@ def check_is_json(txt)
   data
 end
 
+def wait_for(timeout = 2)
+  Fiber.new do
+    t = Time.now
+    begin
+      yield
+    rescue Minitest::Assertion => ex
+      raise ex if Time.now - t > timeout
+#      EM::Synchrony.sleep 0.1
+      sleep 0.1
+      retry
+    end
+  end.resume
+end
+
 ##
 # Start a server before running tests and cleanup afterwards
 
