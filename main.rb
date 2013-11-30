@@ -38,9 +38,14 @@ EM.synchrony do
 
         if call.first == WAMP::PREFIX then
           App.save_prefix ws, call
-        else # rpc or pubsub
+        elsif call.first == WAMP::CALL then
+          #[ TYPE_ID_CALL , callID , procURI , ... ]
+          uri = App.solve_uri ws, call[2]
+          controller, action = App.parse_uri uri
+          result = App.send(action, *call[3..-1])
+          ws.send [WAMP::CALLRESULT,call[1], result].to_json
+        else # pubsub
           H.spit "route: #{call}"
-#            App.route ws,call
         end
       end.resume
     end

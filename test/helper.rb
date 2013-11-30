@@ -5,7 +5,6 @@ require 'pty'
 require 'socket'
 require 'timeout'
 require 'json'
-require 'mongo'
 
 $:.unshift File.expand_path(__dir__ + '/../lib')
 require 'log_helpers'
@@ -14,10 +13,6 @@ def force_constant(klass, name, value)
   previous_value = klass.send(:remove_const, name)
   klass.const_set name.to_s, value
   previous_value
-end
-
-def get_db
-  Mongo::Connection.new.db('bogusdb')
 end
 
 def run_ws_client(opts = {})

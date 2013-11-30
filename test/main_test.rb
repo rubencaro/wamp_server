@@ -12,36 +12,46 @@ class TestMain < Minitest::Test
     assert_equal 1, info[:messages].count
   end
 
-#  def test_welcome
-#    @db = get_db
-#    @db['sessions'].remove
-#    cb = lambda do |ws,msg,type,info|
-#      data = check_is_json msg
-#      check_is_welcome data
-#      ws.close
-#    end
-#    info = run_ws_client onmessage: cb
-#    assert_equal 1, info[:messages].count
-#    assert_equal 0, @db['sessions'].find().count
-#  end
+  def test_welcome
+    cb = lambda do |ws,msg,type,info|
+      data = check_is_json msg
 
-#  def test_prefix
-#    @db = get_db
-#    @db['sessions'].remove
-#    cb = lambda do |ws,msg,type,info|
-#      sid = check_is_json(msg)[1]
-#      uri = "http://example.com/simple/calc#"
-#      prefix = 'calc'
-#      ws.send [WAMP::PREFIX, prefix, uri].to_json
-#      wait_for do
-#        check_prefix_is_saved ws, sid
-#        ws.close
-#      end
-#    end
-#    info = run_ws_client onmessage: cb
-#    assert_equal 1, info[:messages].count
-#    assert_equal 0, @db['sessions'].find().count
-#  end
+      assert [WAMP::WELCOME,WAMP::CALLRESULT].include?(data.first), "#{data}"
+
+      if data.first == WAMP::WELCOME then
+        check_is_welcome data
+        ws.send [WAMP::CALL, 'id', "http://testing#get_db"].to_json
+      else # CALLRESULT
+        result = data.last
+        assert_equal 1, result['sessions'].count, "#{result}"
+        ws.close
+      end
+    end
+    info = run_ws_client onmessage: cb
+    assert_equal 2, info[:messages].count, info
+  end
+
+  def test_prefix
+    cb = lambda do |ws,msg,type,info|
+      data = check_is_json msg
+
+      assert [WAMP::WELCOME,WAMP::CALLRESULT].include?(data.first), "#{data}"
+
+      uri = "http://testing#"
+      prefix = 'test'
+
+      if data.first == WAMP::WELCOME then
+        ws.send [WAMP::PREFIX, prefix, uri].to_json
+        ws.send [WAMP::CALL, 'id', "#{prefix}:get_db"].to_json
+      else # CALLRESULT
+        result = data.last
+        assert_equal uri, result['sessions'].values.first['prefixes'][prefix], "#{result}"
+        ws.close
+      end
+    end
+    info = run_ws_client onmessage: cb
+    assert_equal 2, info[:messages].count, info
+  end
 
   def test_rpc
   end
@@ -56,19 +66,6 @@ class TestMain < Minitest::Test
     assert_equal 4, data.count
     assert_equal WAMP::WELCOME, data[0]
     assert_equal 1, data[2] # protocol version
-    assert_equal 1, @db['sessions'].find(:ws => data[1]).count
-  end
-
-  def check_prefix_is_saved(ws,sid)
-    # [ TYPE_ID_PREFIX , prefix, URI ]
-    uri = "http://example.com/simple/calc#"
-    prefix = 'calc'
-    ws.send [WAMP::PREFIX, prefix, uri].to_json
-    s = @db['sessions'].find(:ws => sid).to_a.first
-    assert s['prefixes']
-    assert_equal 1, s['prefixes'].count
-    assert uri, s['prefixes'].first['uri']
-    assert prefix, s['prefixes'].first['prefix']
   end
 
 end
