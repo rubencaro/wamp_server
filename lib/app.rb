@@ -4,13 +4,16 @@ require 'app/drivers/memory'
 require 'app/drivers/mongo'
 
 module App
-  @@driver = App::Drivers::Memory
-
   extend SingleForwardable
-  def_delegators @@driver, :init_session, :save_prefix, :solve_uri,
-                       :clear_sessions, :remove_session, :get_db
 
-  def self.init
+  def self.delegate
+    def_delegators @@driver, :init_session, :save_prefix, :solve_uri,
+                         :clear_sessions, :remove_session, :get_db
+  end
+
+  def self.init(driver = App::Drivers::Memory)
+    @@driver = driver
+    delegate
     @@driver.init
     @@driver.clear_sessions
   end

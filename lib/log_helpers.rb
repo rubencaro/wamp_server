@@ -7,9 +7,10 @@ module Helpers
 
     def log(msg, opts = {})
 
-      wants_location = !opts[:clean] || !!opts[:location]
-      opts[:location] ||= caller_locations(1,1)[0].label # much faster than 'caller'
-      msg = "[#{opts[:location]}] #{msg}" if wants_location
+      if not opts[:clean] then
+        opts[:location] ||= caller_locations(1,1)[0].label # much faster than 'caller'
+        msg = "[#{opts[:location]}] #{msg}"
+      end
 
       if opts[:color] then
         msg = send(opts[:color],msg)
@@ -32,8 +33,7 @@ module Helpers
       opts[:color] ||= :light_red
       opts[:clean] = true
       l = caller_locations(1,1)[0]
-      opts[:location] = "#{l.label}:#{l.lineno}"
-      log " \n " + msg.inspect + " \n ", opts
+      log "\n[#{l.label}:#{l.lineno}] \n " + msg.inspect + " \n ", opts
     end
 
     def announce(msg = nil, opts = {})
