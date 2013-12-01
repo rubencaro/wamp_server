@@ -6,13 +6,10 @@ module Helpers
     @@palette = [:dark_gray, :light_gray]
 
     def log(msg, opts = {})
-      if defined?(caller_locations) then
-        opts[:location] ||= caller_locations(1,1)[0].label # much faster than 'caller'
-      else
-        opts[:location] ||= caller[0].sub(/^.*`(.*)'$/,"#{$1}") # much slower than 'caller_locations'
-      end
 
-      msg = "[#{opts[:location]}] #{msg}" if not opts[:clean]
+      wants_location = !opts[:clean] || !!opts[:location]
+      opts[:location] ||= caller_locations(1,1)[0].label # much faster than 'caller'
+      msg = "[#{opts[:location]}] #{msg}" if wants_location
 
       if opts[:color] then
         msg = send(opts[:color],msg)
@@ -32,8 +29,18 @@ module Helpers
     end
 
     def spit(msg, opts = {}) # allow hashes as msg
-      color = opts[:color] || :light_red
-      log " \n " + msg.inspect + " \n ", color: color, clean: true
+      opts[:color] ||= :light_red
+      opts[:clean] = true
+      l = caller_locations(1,1)[0]
+      opts[:location] = "#{l.label}:#{l.lineno}"
+      log " \n " + msg.inspect + " \n ", opts
+    end
+
+    def announce(msg = nil, opts = {})
+      msg ||= "\nEntering #{caller_locations(1,1)[0].label}..."
+      opts[:color] ||= :cyan
+      opts[:clean] = true
+      log msg, opts
     end
 
     def yellow(str)

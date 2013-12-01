@@ -6,6 +6,9 @@ require 'fiber_connection_pool'
 module App
   module Drivers
     class Mongo
+      @@db = nil
+
+      def self.get_db(table); @@db[table].find.to_a;end
 
       def self.init
         @@db = FiberConnectionPool.new(:size => 5) do
@@ -15,13 +18,22 @@ module App
       end
 
       def self.init_session(ws)
-        @@db['sessions'].insert({ :ws => ws.object_id })
+        @@db['sessions'].insert({ :_id => ws.object_id })
       end
 
       def self.save_prefix(ws,data)
         # data = [ TYPE_ID_PREFIX , prefix, URI ]
-        op = { :$addToSet => { :prefixes => { :uri => data[2], :prefix => data[1] } }  }
-        @@db['sessions'].update( { :ws => ws.object_id }, op)
+        _, prefix, uri = data
+        op = { :$set => { "prefixes.#{prefix}" => uri }  }
+        @@db['sessions'].update( { :_id => ws.object_id }, op)
+      end
+
+      def self.solve_uri(ws,uri)
+        prefix, action = uri.split(':') # 'prefix:action'
+        session = @@db['sessions'].find(:_id => ws.object_id, "prefixes.#{prefix}" => { :$exists => true }).to_a.first
+        return uri if session.nil?
+        solved = session['prefixes'][prefix]
+        solved ? "#{solved}#{action}" : uri
       end
 
       def self.clear_sessions
@@ -29,7 +41,7 @@ module App
       end
 
       def self.remove_session(ws)
-        @@db['sessions'].remove :ws => ws.object_id
+        @@db['sessions'].remove :_id => ws.object_id
       end
 
     end

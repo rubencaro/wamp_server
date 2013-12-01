@@ -5,6 +5,7 @@ require 'em-synchrony'
 class TestMain < Minitest::Test
 
   def test_plain_ws
+    H.announce
     cb = lambda do |ws,msg,type,info|
       ws.close
     end
@@ -13,6 +14,7 @@ class TestMain < Minitest::Test
   end
 
   def test_welcome
+    H.announce
     cb = lambda do |ws,msg,type,info|
       data = check_is_json msg
 
@@ -20,10 +22,10 @@ class TestMain < Minitest::Test
 
       if data.first == WAMP::WELCOME then
         check_is_welcome data
-        ws.send [WAMP::CALL, 'id', "http://testing#get_db"].to_json
+        ws.send [WAMP::CALL, 'id', "http://testing#get_db",'sessions'].to_json
       else # CALLRESULT
         result = data.last
-        assert_equal 1, result['sessions'].count, "#{result}"
+        assert_equal 1, result.count, "#{result}"
         ws.close
       end
     end
@@ -32,6 +34,7 @@ class TestMain < Minitest::Test
   end
 
   def test_prefix
+    H.announce
     cb = lambda do |ws,msg,type,info|
       data = check_is_json msg
 
@@ -42,10 +45,11 @@ class TestMain < Minitest::Test
 
       if data.first == WAMP::WELCOME then
         ws.send [WAMP::PREFIX, prefix, uri].to_json
-        ws.send [WAMP::CALL, 'id', "#{prefix}:get_db"].to_json
+        ws.send [WAMP::CALL, 'id', "#{prefix}:get_db",'sessions'].to_json
       else # CALLRESULT
         result = data.last
-        assert_equal uri, result['sessions'].values.first['prefixes'][prefix], "#{result}"
+        assert_equal 1, result.count, result
+        assert_equal uri, result.first['prefixes'][prefix], "#{result}"
         ws.close
       end
     end

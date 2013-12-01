@@ -1,6 +1,7 @@
 require 'log_helpers'
 require 'forwardable'
 require 'app/drivers/memory'
+require 'app/drivers/mongo'
 
 module App
   @@driver = App::Drivers::Memory

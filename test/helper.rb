@@ -17,11 +17,12 @@ end
 
 def run_ws_client(opts = {})
 
+  info = {} # hash to gather info
+
   cb_onopen = opts[:onopen] || lambda{ |ws,info| }
   cb_onmessage = opts[:onmessage] || lambda{ |ws,msg,type,info| ws.close } # remember to close ws !
   cb_onclose = opts[:onclose] || lambda{ |ws,info| }
 
-  info = {} # hash to gather info
   connection_timeout = opts[:connection_timeout] || 1 # timeout until onopen
   message_timeout = opts[:message_timeout] || 3       # timeout between messages
   EM.run do
@@ -60,20 +61,6 @@ def check_is_json(txt)
   end
   assert !data.nil?, msg: "Is not JSON: #{txt}"
   data
-end
-
-def wait_for(timeout = 2)
-  Fiber.new do
-    t = Time.now
-    begin
-      yield
-    rescue Minitest::Assertion => ex
-      raise ex if Time.now - t > timeout
-#      EM::Synchrony.sleep 0.1
-      sleep 0.1
-      retry
-    end
-  end.resume
 end
 
 ##
