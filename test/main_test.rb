@@ -22,7 +22,7 @@ class TestMain < Minitest::Test
 
       if data.first == WAMP::WELCOME then
         check_is_welcome data
-        ws.send [WAMP::CALL, 'id', "http://testing#get_db",'sessions'].to_json
+        ws.send [WAMP::CALL, 'id', "http://test#get_db",'sessions'].to_json
       else # CALLRESULT
         result = data.last
         assert_equal 1, result.count, "#{result}"
@@ -40,7 +40,7 @@ class TestMain < Minitest::Test
 
       assert [WAMP::WELCOME,WAMP::CALLRESULT].include?(data.first), "#{data}"
 
-      uri = "http://testing#"
+      uri = "http://test#"
       prefix = 'test'
 
       if data.first == WAMP::WELCOME then
