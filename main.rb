@@ -42,8 +42,13 @@ EM.synchrony do
           #[ TYPE_ID_CALL , callID , procURI , ... ]
           uri = App.solve_uri ws, call[2]
           controller, action = App.parse_uri uri
-          result = App.send(action, *call[3..-1])
-          ws.send [WAMP::CALLRESULT,call[1], result].to_json
+          begin
+            result = App.route(controller, action, *call[3..-1])
+            ws.send [WAMP::CALLRESULT, call[1], result].to_json
+          rescue => ex
+            H.log_ex ex
+            ws.send [WAMP::CALLERROR, call[1], "http://#{controller}#error", ex.to_s].to_json
+          end
         else # pubsub
           H.spit "route: #{call}"
         end

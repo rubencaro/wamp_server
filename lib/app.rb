@@ -27,9 +27,9 @@ module App
   El enrutamiento se reduce a buscar una key en un hash.
 =end
   def self.fill_routes(routes)
-    controllers = Module.constants.grep /^.+Controller$/
+    controllers = App.constants.grep /^.+Controller$/
     controllers.each do |c|
-      controller = Kernel.const_get(c)
+      controller = App.const_get(c)
       c = c.to_s.sub(/Controller$/,'')
       actions = controller.methods.grep(/^.+_action$/)
       actions.each do |a|
@@ -52,11 +52,8 @@ module App
     H.log "Routing #{controller}##{action} #{args}"
     if @@routes[controller].nil? or
         @@routes[controller][action].nil? then
-      return :error => :not_found
+      raise "Not Found #{controller}##{action}"
     end
-
-    params['controller'] = controller
-    params['action'] = action
 
     return @@routes[controller][action].call(*args)
   end
