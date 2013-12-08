@@ -32,7 +32,7 @@ def run_ws_client(opts = {})
 
     ws.onopen do
       timer.cancel
-      cb_onopen.call(ws,info)
+      Fiber.new do cb_onopen.call(ws,info) end.resume
       timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
     end
 
@@ -40,13 +40,13 @@ def run_ws_client(opts = {})
       timer.cancel
       info[:messages] ||= []
       info[:messages] << msg
-      cb_onmessage.call(ws,msg,type,info)
+      Fiber.new do cb_onmessage.call(ws,msg,type,info) end.resume
       timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
     end
 
     ws.onclose do
       timer.cancel
-      cb_onclose.call(ws,info)
+      Fiber.new do cb_onclose.call(ws,info) end.resume
       EM.stop
     end
   end
@@ -61,6 +61,55 @@ def check_is_json(txt)
   end
   assert !data.nil?, msg: "Is not JSON: #{txt}"
   data
+end
+
+# make a call to test controller from within the same client
+# assumes no one is making any calls while it's acting
+#
+def call(ws, action, *args)
+  cmd = [WAMP::CALL, 'id', "http://test##{action}"] + args
+  result = nil
+
+  # save current callback
+  prev_onmessage = ws.instance_variable_get(:@onmessage)
+
+  calling_fiber = Fiber.current
+
+  # put in place a temp callback to get the result
+  new_onmessage = Proc.new do |msg, type|
+    data = check_is_json msg
+    result = data.last
+    calling_fiber.resume
+  end
+  ws.instance_variable_set(:@onmessage, new_onmessage)
+
+  # make the call
+  ws.send cmd.to_json
+
+  # yield until the callback resumes this fiber
+  Fiber.yield
+
+  # return the original callback
+  ws.instance_variable_set(:@onmessage, prev_onmessage)
+
+  result
+end
+
+# make a request to test controller running a new ws_client
+def request(action, *args)
+  cmd = [WAMP::CALL, 'id', "http://test##{action}"] + args
+  result = nil
+  cb = lambda do |ws,msg,type,info|
+    data = check_is_json msg
+    if data.first == WAMP::WELCOME then
+      ws.send cmd.to_json
+    else # CALLRESULT or CALLERROR
+      result = data.last
+      ws.close
+    end
+  end
+  run_ws_client onmessage: cb
+  result
 end
 
 ##
