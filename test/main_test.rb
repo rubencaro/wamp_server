@@ -20,6 +20,7 @@ class TestMain < Minitest::Test
       check_is_welcome data
       result = call(ws,'get_db','sessions')
       assert_equal 1, result.count, "#{result}"
+      assert result.first['_id'], result
       ws.close
     end
     info = run_ws_client onmessage: cb
@@ -47,6 +48,40 @@ class TestMain < Minitest::Test
   end
 
   def test_rpc
+    H.announce
+    controller = 'test' # TestController
+    action = 'get_db'   # get_db_action
+    args = ['sessions'] # 'table' argument for get_db_action
+    callid = 'right one'
+    cmd = [WAMP::CALL, callid, "http://#{controller}##{action}"] + args
+
+    cb = lambda do |ws,msg,type,info|
+      data = check_is_json msg
+      if data.first == WAMP::WELCOME then
+        # send the right request right after welcome
+        ws.send cmd.to_json
+      elsif data.first == WAMP::CALLRESULT then
+        # assert the right answer for the right request
+        assert_equal 'right one', data[1], data
+        result = data.last
+        assert_equal 1, result.count, "#{result}"
+        assert result.first['_id'], result
+
+        # send the wrong request to force error
+        callid = 'wrong one'
+        controller = 'not_existing'
+        cmd = [WAMP::CALL, callid, "http://#{controller}##{action}"] + args
+        ws.send cmd.to_json
+      else # WAMP::CALLERROR
+        # assert the right answer for the wrong request
+        assert_equal WAMP::CALLERROR, data.first, "#{data}"
+        assert_equal 'wrong one', data[1], data
+        assert data.last =~ /Not Found/
+        ws.close
+      end
+    end
+    info = run_ws_client onmessage: cb
+    assert_equal 3, info[:messages].count, info
   end
 
   def test_pubsub
