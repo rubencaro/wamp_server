@@ -2,6 +2,7 @@ require 'log_helpers'
 require 'string_helpers'
 require 'forwardable'
 require 'app/drivers/memory'
+require 'app/drivers/mongo'
 Dir['./lib/app/controllers/*_controller.rb'].each{ |f| require File.expand_path(f) }
 
 module App
@@ -9,7 +10,8 @@ module App
 
   def self.delegate
     def_delegators @@driver, :init_session, :save_prefix, :solve_uri,
-                         :clear_sessions, :remove_session
+                         :clear_sessions, :remove_session,
+                         :subscribe, :unsubscribe
   end
 
   def self.driver; @@driver; end

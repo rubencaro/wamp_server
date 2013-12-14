@@ -49,7 +49,11 @@ EM.synchrony do
             H.log_ex ex
             ws.send [WAMP::CALLERROR, call[1], "http://#{controller}#error", ex.to_s].to_json
           end
-        else # pubsub
+        elsif call.first == WAMP::SUBSCRIBE then
+          App.subscribe ws, call
+        elsif call.first == WAMP::UNSUBSCRIBE then
+          App.unsubscribe ws, call
+        elsif call.first == WAMP::PUBLISH then
           H.spit "route: #{call}"
         end
       end.resume

@@ -84,7 +84,55 @@ class TestMain < TestCase
     assert_equal 3, info[:messages].count, info
   end
 
-  def test_pubsub
+  def test_subscribe_unsubscribe
+    H.announce
+
+    uri = 'http://test/subscribe_test'
+
+    cb = lambda do |ws,msg,type,info|
+      data = check_is_json msg
+      assert_equal WAMP::WELCOME, data.first, data
+
+      # send the subscribe request
+      ws.send [WAMP::SUBSCRIBE,uri].to_json
+
+      # ensure it's subscribed
+      #   subscription is saved within the session
+      #   in a hash where the uri is the key
+      result = call(ws,'get_db','sessions')
+      session = result.select{|r| r['_id'] == data[1]}.first
+      subs = session['subscriptions']
+      assert subs && (subs.count == 1), session
+      assert subs[uri], subs
+
+      # send the unsubscribe request
+      ws.send [WAMP::UNSUBSCRIBE,uri].to_json
+
+      # ensure it's subscribed
+      result = call(ws,'get_db','sessions')
+      session = result.select{|r| r['_id'] == data[1]}.first
+      subs = session['subscriptions']
+      assert subs && subs.none?, session
+
+      ws.close
+    end
+    info = run_ws_client onmessage: cb
+    assert_equal 1, info[:messages].count, info
+  end
+
+  def test_publish
+
+    # n.times do
+    #   welcome
+    #   subscribe
+    # end
+
+    # welcome
+    # publish
+    # test is published to n subscribers
+
+    # test is received by n subscribers
+
     todo
   end
 

@@ -44,6 +44,18 @@ module App
         @@db['sessions'].remove :_id => ws.object_id
       end
 
+      def self.subscribe(ws,data)
+        # data = [ TYPE_ID_SUBSCRIBE , topicURI ]
+        op = { :$set => { "subscriptions.#{data[1]}" => {} }  }
+        @@db['sessions'].update( { :_id => ws.object_id }, op)
+      end
+
+      def self.unsubscribe(ws,data)
+        # data = [ TYPE_ID_UNSUBSCRIBE , topicURI ]
+        op = { :$unset => { "subscriptions.#{data[1]}" => '' }  }
+        @@db['sessions'].update( { :_id => ws.object_id }, op)
+      end
+
     end
   end
 end
