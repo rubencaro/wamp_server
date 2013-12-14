@@ -121,11 +121,52 @@ class TestMain < TestCase
   end
 
   def test_publish
+    H.announce
 
-    # n.times do
-    #   welcome
-    #   subscribe
-    # end
+    socks = []
+    n = 5
+    uri = 'http://test/subscribe_test'
+
+    cb = lambda do |ws,msg,type,info|
+      data = check_is_json msg
+      assert_equal WAMP::WELCOME, data.first, data
+      sid = data[1]
+
+      # run n satellite clients and subscribe them to our topic
+      sent = 0
+      subscribe_cb = lambda do |ws_sat,msg,type,info|
+        socks << ws_sat # save it to be closed afterwards
+        ws_sat.send [WAMP::SUBSCRIBE,uri].to_json
+        sent += 1
+      end
+      n.times do
+        run_satellite_ws_client info, :onmessage => subscribe_cb
+      end
+
+      # ensure we have audience
+      timer = EM::Timer.new(5){ assert false, "Waited too much !" }
+      while(sent < n) do EM::Synchrony.sleep(0.1) end
+      timer.cancel
+
+      sessions = call(ws,'get_db','sessions')
+      assert_equal n+1, sessions.count, sessions
+      sessions.reject{|s| s['_id'] == sid}.each do |s|
+        subs = s['subscriptions']
+        assert subs && (subs.count == 1), s
+        assert subs[uri], subs
+      end
+
+      # publish
+
+      # test is published to n subscribers
+
+      # test is received by n subscribers
+
+      socks.each{ |s| s.close }
+      ws.close
+    end
+    info = run_ws_client onmessage: cb
+    H.spit info
 
     # welcome
     # publish

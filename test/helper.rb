@@ -11,42 +11,55 @@ require 'log_helpers'
 
 class TestCase < Minitest::Test
 
+  # hijack a satellite client to be the main client
   def run_ws_client(opts = {})
 
     info = {} # hash to gather info
 
-    cb_onopen = opts[:onopen] || lambda{ |ws,info| }
-    cb_onmessage = opts[:onmessage] || lambda{ |ws,msg,type,info| ws.close } # remember to close ws !
-    cb_onclose = opts[:onclose] || lambda{ |ws,info| }
+    prev_onclose = opts[:onclose]
+    opts[:onclose] = lambda do |ws,info|
+      prev_onclose.call(ws,info) if prev_onclose
+      EM.stop # stop after this client closes
+    end
+
+    EM.run do
+      run_satellite_ws_client info, opts
+    end
+    info
+  end
+
+  # run a WebSocket::EventMachine::Client assuming to be a satellite client,
+  # i.e. inside an EM.run loop and not stopping it
+  def run_satellite_ws_client(info, opts = {})
+
+    opts[:onopen] ||= lambda{ |ws,info| }
+    opts[:onmessage] ||= lambda{ |ws,msg,type,info| ws.close } # remember to close ws !
+    opts[:onclose] ||= lambda{ |ws,info| }
 
     connection_timeout = opts[:connection_timeout] || 1 # timeout until onopen
     message_timeout = opts[:message_timeout] || 3       # timeout between messages
-    EM.run do
 
-      timer = EM::Timer.new(connection_timeout){ raise Timeout::Error.new "Waited #{connection_timeout} seconds !" }
-      ws = WebSocket::EventMachine::Client.connect(:uri => 'ws://0.0.0.0:3000')
+    timer = EM::Timer.new(connection_timeout){ raise Timeout::Error.new "Waited #{connection_timeout} seconds !" }
+    ws = WebSocket::EventMachine::Client.connect(:uri => 'ws://0.0.0.0:3000')
 
-      ws.onopen do
-        timer.cancel
-        Fiber.new do cb_onopen.call(ws,info) end.resume
-        timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
-      end
-
-      ws.onmessage do |msg, type|
-        timer.cancel
-        info[:messages] ||= []
-        info[:messages] << msg
-        Fiber.new do cb_onmessage.call(ws,msg,type,info) end.resume
-        timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
-      end
-
-      ws.onclose do
-        timer.cancel
-        Fiber.new do cb_onclose.call(ws,info) end.resume
-        EM.stop
-      end
+    ws.onopen do
+      timer.cancel
+      Fiber.new do opts[:onopen].call(ws,info) end.resume
+      timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
     end
-    info
+
+    ws.onmessage do |msg, type|
+      timer.cancel
+      info[:messages] ||= []
+      info[:messages] << msg
+      Fiber.new do opts[:onmessage].call(ws,msg,type,info) end.resume
+      timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
+    end
+
+    ws.onclose do
+      timer.cancel
+      Fiber.new do opts[:onclose].call(ws,info) end.resume
+    end
   end
 
   def check_is_json(txt)
