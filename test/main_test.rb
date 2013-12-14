@@ -2,7 +2,7 @@ require_relative 'helper'
 require 'wamp'
 require 'em-synchrony'
 
-class TestMain < Minitest::Test
+class TestMain < TestCase
 
   def test_plain_ws
     H.announce
@@ -85,6 +85,7 @@ class TestMain < Minitest::Test
   end
 
   def test_pubsub
+    todo
   end
 
   private

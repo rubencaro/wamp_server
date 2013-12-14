@@ -37,7 +37,9 @@ module Helpers
     end
 
     def announce(msg = nil, opts = {})
-      msg ||= "\nEntering #{caller_locations(1,1)[0].label}..."
+      label = caller_locations(1,1)[0].label
+      place = File.basename(caller_locations(1,1)[0].path) + ":" + caller_locations(1,1)[0].lineno.to_s
+      msg ||= "\n ==> Entering #{label} (#{place})..."
       opts[:color] ||= :cyan
       opts[:clean] = true
       log msg, opts

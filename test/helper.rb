@@ -9,107 +9,121 @@ require 'json'
 $:.unshift File.expand_path(__dir__ + '/../lib')
 require 'log_helpers'
 
-def force_constant(klass, name, value)
-  previous_value = klass.send(:remove_const, name)
-  klass.const_set name.to_s, value
-  previous_value
-end
+class TestCase < Minitest::Test
 
-def run_ws_client(opts = {})
+  def run_ws_client(opts = {})
 
-  info = {} # hash to gather info
+    info = {} # hash to gather info
 
-  cb_onopen = opts[:onopen] || lambda{ |ws,info| }
-  cb_onmessage = opts[:onmessage] || lambda{ |ws,msg,type,info| ws.close } # remember to close ws !
-  cb_onclose = opts[:onclose] || lambda{ |ws,info| }
+    cb_onopen = opts[:onopen] || lambda{ |ws,info| }
+    cb_onmessage = opts[:onmessage] || lambda{ |ws,msg,type,info| ws.close } # remember to close ws !
+    cb_onclose = opts[:onclose] || lambda{ |ws,info| }
 
-  connection_timeout = opts[:connection_timeout] || 1 # timeout until onopen
-  message_timeout = opts[:message_timeout] || 3       # timeout between messages
-  EM.run do
+    connection_timeout = opts[:connection_timeout] || 1 # timeout until onopen
+    message_timeout = opts[:message_timeout] || 3       # timeout between messages
+    EM.run do
 
-    timer = EM::Timer.new(connection_timeout){ raise Timeout::Error.new "Waited #{connection_timeout} seconds !" }
-    ws = WebSocket::EventMachine::Client.connect(:uri => 'ws://0.0.0.0:3000')
+      timer = EM::Timer.new(connection_timeout){ raise Timeout::Error.new "Waited #{connection_timeout} seconds !" }
+      ws = WebSocket::EventMachine::Client.connect(:uri => 'ws://0.0.0.0:3000')
 
-    ws.onopen do
-      timer.cancel
-      Fiber.new do cb_onopen.call(ws,info) end.resume
-      timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
+      ws.onopen do
+        timer.cancel
+        Fiber.new do cb_onopen.call(ws,info) end.resume
+        timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
+      end
+
+      ws.onmessage do |msg, type|
+        timer.cancel
+        info[:messages] ||= []
+        info[:messages] << msg
+        Fiber.new do cb_onmessage.call(ws,msg,type,info) end.resume
+        timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
+      end
+
+      ws.onclose do
+        timer.cancel
+        Fiber.new do cb_onclose.call(ws,info) end.resume
+        EM.stop
+      end
     end
+    info
+  end
 
-    ws.onmessage do |msg, type|
-      timer.cancel
-      info[:messages] ||= []
-      info[:messages] << msg
-      Fiber.new do cb_onmessage.call(ws,msg,type,info) end.resume
-      timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
+  def check_is_json(txt)
+    begin
+      data = JSON.parse(txt)
+    rescue => err
+      H.log_ex err, msg: "Is not JSON: #{txt}"
     end
-
-    ws.onclose do
-      timer.cancel
-      Fiber.new do cb_onclose.call(ws,info) end.resume
-      EM.stop
-    end
+    assert !data.nil?, msg: "Is not JSON: #{txt}"
+    data
   end
-  info
-end
 
-def check_is_json(txt)
-  begin
-    data = JSON.parse(txt)
-  rescue => err
-    H.log_ex err, msg: "Is not JSON: #{txt}"
-  end
-  assert !data.nil?, msg: "Is not JSON: #{txt}"
-  data
-end
+  # make a call to test controller from within the same client
+  # assumes no one is making any calls while it's acting
+  #
+  def call(ws, action, *args)
+    cmd = [WAMP::CALL, 'id', "http://test##{action}"] + args
+    result = nil
 
-# make a call to test controller from within the same client
-# assumes no one is making any calls while it's acting
-#
-def call(ws, action, *args)
-  cmd = [WAMP::CALL, 'id', "http://test##{action}"] + args
-  result = nil
+    # save current callback
+    prev_onmessage = ws.instance_variable_get(:@onmessage)
 
-  # save current callback
-  prev_onmessage = ws.instance_variable_get(:@onmessage)
+    calling_fiber = Fiber.current
 
-  calling_fiber = Fiber.current
-
-  # put in place a temp callback to get the result
-  new_onmessage = Proc.new do |msg, type|
-    data = check_is_json msg
-    result = data.last
-    calling_fiber.resume
-  end
-  ws.instance_variable_set(:@onmessage, new_onmessage)
-
-  # make the call
-  ws.send cmd.to_json
-
-  # yield until the callback resumes this fiber
-  Fiber.yield
-
-  # return the original callback
-  ws.instance_variable_set(:@onmessage, prev_onmessage)
-
-  result
-end
-
-# make a request to test controller running a new ws_client
-def request(action, *args)
-  cmd = [WAMP::CALL, 'id', "http://test##{action}"] + args
-  result = nil
-  cb = lambda do |ws,msg,type,info|
-    data = check_is_json msg
-    if data.first == WAMP::WELCOME then
-      ws.send cmd.to_json
-    else # CALLRESULT or CALLERROR
+    # put in place a temp callback to get the result
+    new_onmessage = Proc.new do |msg, type|
+      data = check_is_json msg
       result = data.last
-      ws.close
+      calling_fiber.resume
     end
+    ws.instance_variable_set(:@onmessage, new_onmessage)
+
+    # make the call
+    ws.send cmd.to_json
+
+    # yield until the callback resumes this fiber
+    Fiber.yield
+
+    # return the original callback
+    ws.instance_variable_set(:@onmessage, prev_onmessage)
+
+    result
   end
-  run_ws_client onmessage: cb
-  result
+
+  # make a request to test controller running a new ws_client
+  def request(action, *args)
+    cmd = [WAMP::CALL, 'id', "http://test##{action}"] + args
+    result = nil
+    cb = lambda do |ws,msg,type,info|
+      data = check_is_json msg
+      if data.first == WAMP::WELCOME then
+        ws.send cmd.to_json
+      else # CALLRESULT or CALLERROR
+        result = data.last
+        ws.close
+      end
+    end
+    run_ws_client onmessage: cb
+    result
+  end
+
+  def assert(boolean, message=nil)
+    message = message.call if message.respond_to?(:call)
+    message = H.yellow(message.to_s) + H.brown("\n#{caller}")
+    super(boolean, message)
+  end
+
+  def todo(msg = nil, opts = {})
+    label = caller_locations(1,1)[0].label
+    place = File.basename(caller_locations(1,1)[0].path) + ":" + caller_locations(1,1)[0].lineno.to_s
+    msg ||= "\n TODO: #{label} (#{place})..."
+    opts[:color] ||= :yellow
+    opts[:clean] = true
+    H.log msg, opts
+    skip msg
+  end
+
 end
 
 ##
