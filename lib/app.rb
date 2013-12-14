@@ -11,7 +11,7 @@ module App
   def self.delegate
     def_delegators @@driver, :init_session, :save_prefix, :solve_uri,
                          :clear_sessions, :remove_session,
-                         :subscribe, :unsubscribe
+                         :subscribe, :unsubscribe, :get_suscriptions
   end
 
   def self.driver; @@driver; end

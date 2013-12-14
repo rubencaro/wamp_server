@@ -40,16 +40,21 @@ module App
         @@db['sessions'].delete ws.object_id
       end
 
-      def self.subscribe(ws,data)
-        # data = [ TYPE_ID_SUBSCRIBE , topicURI ]
+      def self.subscribe(ws,uri)
         @@db['sessions'][ws.object_id][:subscriptions] ||= {}
-        @@db['sessions'][ws.object_id][:subscriptions][data[1]] = {}
+        @@db['sessions'][ws.object_id][:subscriptions][uri] = {}
       end
 
-      def self.unsubscribe(ws,data)
-        # data = [ TYPE_ID_UNSUBSCRIBE , topicURI ]
+      def self.unsubscribe(ws,uri)
         return if @@db['sessions'][ws.object_id][:subscriptions].nil?
-        @@db['sessions'][ws.object_id][:subscriptions].delete data[1]
+        @@db['sessions'][ws.object_id][:subscriptions].delete uri
+      end
+
+      def self.get_suscriptions(uri)
+        @@db['sessions'].select do |id,sess|
+          subs = sess[:subscriptions]
+          subs and subs[uri]
+        end.keys
       end
 
     end

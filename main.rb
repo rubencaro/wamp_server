@@ -36,10 +36,8 @@ EM.synchrony do
           ws.send( WampServer::RESPONSES[:not_json] )
         end
 
-        if call.first == WAMP::PREFIX then
-          App.save_prefix ws, call
-        elsif call.first == WAMP::CALL then
-          #[ TYPE_ID_CALL , callID , procURI , ... ]
+        if call.first == WAMP::CALL then
+          # [ TYPE_ID_CALL , callID , procURI , ... ]
           uri = App.solve_uri ws, call[2]
           controller, action = App.parse_uri uri
           begin
@@ -49,12 +47,26 @@ EM.synchrony do
             H.log_ex ex
             ws.send [WAMP::CALLERROR, call[1], "http://#{controller}#error", ex.to_s].to_json
           end
-        elsif call.first == WAMP::SUBSCRIBE then
-          App.subscribe ws, call
-        elsif call.first == WAMP::UNSUBSCRIBE then
-          App.unsubscribe ws, call
         elsif call.first == WAMP::PUBLISH then
-          H.spit "route: #{call}"
+          # [ TYPE_ID_PUBLISH , topicURI , event , exclude , eligible ]
+          _, curie, event, excluded, eligible = call
+          uri = App.solve_uri ws, curie
+          subscribed = App.get_suscriptions uri
+          dest = (subscribed & eligible) - excluded
+          package = [WAMP::EVENT, uri, event].to_json
+          dest.each do |d|
+            ObjectSpace._id2ref(d).send( package )
+          end
+        elsif call.first == WAMP::SUBSCRIBE then
+          # [ TYPE_ID_SUBSCRIBE , topicURI ]
+          uri = App.solve_uri ws, call[1]
+          App.subscribe ws, uri
+        elsif call.first == WAMP::UNSUBSCRIBE then
+          # [ TYPE_ID_UNSUBSCRIBE , topicURI ]
+          uri = App.solve_uri ws, call[1]
+          App.unsubscribe ws, uri
+        elsif call.first == WAMP::PREFIX then
+          App.save_prefix ws, call
         end
       end.resume
     end

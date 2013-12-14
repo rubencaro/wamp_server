@@ -123,9 +123,10 @@ class TestMain < TestCase
   def test_publish
     H.announce
 
-    socks = []
+    sat_info = { :sats => {}, :sent => 0, :received => {} }
     n = 5
     uri = 'http://test/subscribe_test'
+    lucky_ones = banned_ones = []
 
     cb = lambda do |ws,msg,type,info|
       data = check_is_json msg
@@ -133,21 +134,23 @@ class TestMain < TestCase
       sid = data[1]
 
       # run n satellite clients and subscribe them to our topic
-      sent = 0
       subscribe_cb = lambda do |ws_sat,msg,type,info|
-        socks << ws_sat # save it to be closed afterwards
-        ws_sat.send [WAMP::SUBSCRIBE,uri].to_json
-        sent += 1
+        data = check_is_json msg
+        if data.first == WAMP::WELCOME then
+          sat_info[:sats][data[1]] = ws_sat # save it to be closed afterwards
+          ws_sat.send [WAMP::SUBSCRIBE,uri].to_json
+          sat_info[:sent] += 1
+        elsif data.first == WAMP::EVENT then
+          sat_info[:received][ws_sat.object_id] ||= []
+          sat_info[:received][ws_sat.object_id] << msg
+        end
       end
       n.times do
         run_satellite_ws_client info, :onmessage => subscribe_cb
       end
 
       # ensure we have audience
-      timer = EM::Timer.new(5){ assert false, "Waited too much !" }
-      while(sent < n) do EM::Synchrony.sleep(0.1) end
-      timer.cancel
-
+      wait_for { sat_info[:sent] >= n } # until everyone makes the request
       sessions = call(ws,'get_db','sessions')
       assert_equal n+1, sessions.count, sessions
       sessions.reject{|s| s['_id'] == sid}.each do |s|
@@ -156,25 +159,26 @@ class TestMain < TestCase
         assert subs[uri], subs
       end
 
-      # publish
+      # publish only within the lucky_ones, but not the banned_ones
+      lucky_ones = sat_info[:sats].keys[0..-1] # all but last are allowed
+      banned_ones = sat_info[:sats].keys[0..0] # first is banned
+      ws.send [WAMP::PUBLISH,uri,'hello',banned_ones,lucky_ones].to_json
 
-      # test is published to n subscribers
+      # wait until everyone get the event
+      wait_for { sat_info[:received].count >= (lucky_ones - banned_ones).count }
 
-      # test is received by n subscribers
+      # test is received by the lucky_ones, not the banned_ones
+      int = sat_info[:received].keys & lucky_ones
+      assert_equal 0, int.count, int
 
-      socks.each{ |s| s.close }
+      sat_info[:sats].values.each{ |s| s.close }
       ws.close
     end
     info = run_ws_client onmessage: cb
-    H.spit info
 
-    # welcome
-    # publish
-    # test is published to n subscribers
-
-    # test is received by n subscribers
-
-    todo
+    # test is published to the lucky_ones, not the banned_ones
+    events = info[:messages].select{ |i| i.first == WAMP::EVENT }
+    assert_equal (lucky_ones - banned_ones).count, events.count, events
   end
 
   private

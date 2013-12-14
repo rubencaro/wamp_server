@@ -37,7 +37,7 @@ class TestCase < Minitest::Test
     opts[:onclose] ||= lambda{ |ws,info| }
 
     connection_timeout = opts[:connection_timeout] || 1 # timeout until onopen
-    message_timeout = opts[:message_timeout] || 3       # timeout between messages
+    message_timeout = opts[:message_timeout] || 5       # timeout between messages
 
     timer = EM::Timer.new(connection_timeout){ raise Timeout::Error.new "Waited #{connection_timeout} seconds !" }
     ws = WebSocket::EventMachine::Client.connect(:uri => 'ws://0.0.0.0:3000')
@@ -51,7 +51,7 @@ class TestCase < Minitest::Test
     ws.onmessage do |msg, type|
       timer.cancel
       info[:messages] ||= []
-      info[:messages] << msg
+      info[:messages] << JSON.parse(msg)
       Fiber.new do opts[:onmessage].call(ws,msg,type,info) end.resume
       timer = EM::Timer.new(message_timeout){ raise Timeout::Error.new "Waited #{message_timeout} seconds !" }
     end
@@ -60,6 +60,14 @@ class TestCase < Minitest::Test
       timer.cancel
       Fiber.new do opts[:onclose].call(ws,info) end.resume
     end
+  end
+
+  def wait_for(timeout = 3)
+    loc = caller_locations(1,1)[0]
+    place = loc.path + ":" + loc.lineno.to_s
+    timer = EM::Timer.new(timeout){ assert false, "Waited #{timeout} seconds on #{place}" }
+    while(!yield) do EM::Synchrony.sleep(0.1) end
+    timer.cancel
   end
 
   def check_is_json(txt)

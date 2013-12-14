@@ -44,16 +44,18 @@ module App
         @@db['sessions'].remove :_id => ws.object_id
       end
 
-      def self.subscribe(ws,data)
-        # data = [ TYPE_ID_SUBSCRIBE , topicURI ]
-        op = { :$set => { "subscriptions.#{data[1]}" => {} }  }
+      def self.subscribe(ws,uri)
+        op = { :$set => { "subscriptions.#{uri}" => {} }  }
         @@db['sessions'].update( { :_id => ws.object_id }, op)
       end
 
-      def self.unsubscribe(ws,data)
-        # data = [ TYPE_ID_UNSUBSCRIBE , topicURI ]
-        op = { :$unset => { "subscriptions.#{data[1]}" => '' }  }
+      def self.unsubscribe(ws,uri)
+        op = { :$unset => { "subscriptions.#{uri}" => '' }  }
         @@db['sessions'].update( { :_id => ws.object_id }, op)
+      end
+
+      def self.get_suscriptions(uri)
+        @@db['sessions'].find( "subscriptions.#{uri}" => { :$exists => true } ).map{ |r| r['_id'] }
       end
 
     end
