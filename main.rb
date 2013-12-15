@@ -12,18 +12,18 @@ EM.synchrony do
   host = '0.0.0.0'
   port = '3000'
 
-  trap("INT") { WampServer.stop }
-  trap("TERM") { WampServer.stop }
-  trap("KILL") { WampServer.stop }
+  trap("INT") { WAMP::Server.stop }
+  trap("TERM") { WAMP::Server.stop }
+  trap("KILL") { WAMP::Server.stop }
 
   App.init
 
   H.log "Listening on #{host}:#{port}", :clean => true
-  WampServer.start(:host => host, :port => port) do |ws|
+  WAMP::Server.start(:host => host, :port => port) do |ws|
 
     ws.onopen do
       Fiber.new do
-        ws.send WampServer.welcome(ws)
+        ws.send WAMP::Server.welcome(ws)
       end.resume
     end
 
@@ -33,7 +33,7 @@ EM.synchrony do
         begin
           call = JSON.parse msg
         rescue JSON::ParserError
-          ws.send( WampServer::RESPONSES[:not_json] )
+          ws.send( WAMP::Server::RESPONSES[:not_json] )
         end
 
         if call.first == WAMP::CALL then
