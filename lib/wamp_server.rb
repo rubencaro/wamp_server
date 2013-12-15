@@ -1,10 +1,22 @@
 require 'websocket-eventmachine-server'
 require 'json'
-require 'wamp'
 require 'log_helpers'
 require 'em-synchrony'
 
+#
+# see http://wamp.ws/spec
+#
 module WAMP
+
+  WELCOME = 0
+  PREFIX = 1
+  CALL = 2
+  CALLRESULT = 3
+  CALLERROR = 4
+  SUBSCRIBE = 5
+  UNSUBSCRIBE = 6
+  PUBLISH = 7
+  EVENT = 8
 
   class Server < WebSocket::EventMachine::Server
     VERSION = '0.1'

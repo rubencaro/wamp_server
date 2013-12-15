@@ -3,7 +3,6 @@ require 'bundler/setup'
 require 'em-synchrony'
 require 'json'
 $:.unshift File.expand_path('lib')
-require 'wamp'
 require 'wamp_server'
 require 'app'
 require 'log_helpers'

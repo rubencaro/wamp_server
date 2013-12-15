@@ -1,5 +1,5 @@
 require_relative 'helper'
-require 'wamp'
+require 'wamp_server'
 require 'em-synchrony'
 
 class TestMain < TestCase
