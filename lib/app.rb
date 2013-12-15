@@ -2,7 +2,6 @@ require 'log_helpers'
 require 'string_helpers'
 require 'forwardable'
 require 'app/drivers/memory'
-require 'app/drivers/mongo'
 Dir['./lib/app/controllers/*_controller.rb'].each{ |f| require File.expand_path(f) }
 
 module App

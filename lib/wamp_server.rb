@@ -32,6 +32,7 @@ module WAMP
   # You should pass some callbacks:
   #
   #   :before_start => To be called before actually starting the server, but already within EM reactor.
+  #   :onwelcome => To be called for WELCOME calls.
   #   :onprefix => To be called for PREFIX calls.
   #   :oncall => To be called when server receives a CALL call.
   #   :onpublish => To be called when server receives a PUBLISH call.
@@ -56,7 +57,8 @@ module WAMP
 
         ws.onopen do
           Fiber.new do
-            ws.send WAMP::Server.welcome(ws)
+            sid = opts[:onwelcome].call ws: ws
+            ws.send [WAMP::WELCOME, sid, 1, WAMP::Server.stamp].to_json
           end.resume
         end
 
