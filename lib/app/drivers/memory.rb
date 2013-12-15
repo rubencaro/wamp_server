@@ -16,9 +16,7 @@ module App
         @@db['sessions'][ws.object_id] = {}
       end
 
-      def self.save_prefix(ws,data)
-        # data = [ TYPE_ID_PREFIX , prefix, URI ]
-        _, prefix, uri = data
+      def self.save_prefix(ws,prefix,uri)
         @@db['sessions'][ws.object_id][:prefixes] ||= {}
         @@db['sessions'][ws.object_id][:prefixes][prefix] = uri
       end

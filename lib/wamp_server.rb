@@ -110,8 +110,8 @@ module WAMP
               opts[:onunsubscribe].call ws: ws, curie: call[1]
             elsif call.first == WAMP::PREFIX then
               # [ TYPE_ID_PREFIX , prefix, URI ]
-              _, prefix, curie = call
-              opts[:onprefix].call ws: ws, curie: curie, prefix: prefix
+              _, prefix, uri = call
+              opts[:onprefix].call ws: ws, uri: uri, prefix: prefix
             end
           end.resume
         end
