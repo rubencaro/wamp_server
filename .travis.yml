@@ -2,5 +2,3 @@ script: rake
 
 rvm:
   - 2.0.0
-
-services: mongodb
