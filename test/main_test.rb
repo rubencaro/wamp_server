@@ -1,5 +1,5 @@
-require_relative 'helper'
-require 'wamp_server'
+require_relative 'test_helper'
+require_relative '../lib/wamp_server'
 require 'em-synchrony'
 
 class TestMain < TestCase
@@ -101,6 +101,7 @@ class TestMain < TestCase
       #   in a hash where the uri is the key
       result = call(ws,'get_db','sessions')
       session = result.select{|r| r['_id'] == data[1]}.first
+      assert session, "#{result} \n #{data}"
       subs = session['subscriptions']
       assert subs && (subs.count == 1), session
       assert subs[uri], subs

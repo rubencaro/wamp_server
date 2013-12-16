@@ -1,10 +1,9 @@
-require 'log_helpers'
-require 'string_helpers'
 require 'forwardable'
-require 'app/drivers/memory'
-Dir['./lib/app/controllers/*_controller.rb'].each{ |f| require File.expand_path(f) }
+require_relative 'helpers'
+require_relative 'memory'
+require_relative 'test_controller'
 
-module App
+module TestApp
   extend SingleForwardable
 
   def self.delegate
@@ -14,6 +13,15 @@ module App
   end
 
   def self.driver; @@driver; end
+
+  def self.init(driver = TestApp::Drivers::Memory)
+    @@driver = driver
+    delegate
+    @@driver.init
+    @@driver.clear_sessions
+    @@routes = {}
+    fill_routes @@routes
+  end
 
 =begin
   Rellena el hash routes usando todos los constants *Controller como primer nivel
@@ -28,9 +36,9 @@ module App
   El enrutamiento se reduce a buscar una key en un hash.
 =end
   def self.fill_routes(routes)
-    controllers = App.constants.grep /^.+Controller$/
+    controllers = TestApp.constants.grep /^.+Controller$/
     controllers.each do |c|
-      controller = App.const_get(c)
+      controller = TestApp.const_get(c)
       c = c.to_s.sub(/Controller$/,'')
       actions = controller.methods.grep(/^.+_action$/)
       actions.each do |a|
@@ -40,17 +48,7 @@ module App
     end
   end
 
-  def self.init(driver = App::Drivers::Memory)
-    @@driver = driver
-    delegate
-    @@driver.init
-    @@driver.clear_sessions
-    @@routes = {}
-    fill_routes @@routes
-  end
-
   def self.route(controller, action, *args)
-    H.log "Routing #{controller}##{action} #{args}"
     if @@routes[controller].nil? or
         @@routes[controller][action].nil? then
       raise "Not Found #{controller}##{action}"
@@ -62,9 +60,5 @@ module App
   def self.parse_uri(uri)
     uri =~ %r_http://([^#]+)#(.+)_
     [$1, $2]
-  end
-
-  def self.echo(*args)
-    args
   end
 end

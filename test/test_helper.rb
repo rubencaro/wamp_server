@@ -6,8 +6,7 @@ require 'socket'
 require 'timeout'
 require 'json'
 
-$:.unshift File.expand_path(__dir__ + '/../lib')
-require 'log_helpers'
+require_relative 'log_helpers'
 
 class TestCase < Minitest::Test
 
@@ -150,7 +149,7 @@ end
 ##
 # Start a server before running tests and cleanup afterwards
 
-SERVER_CMD="ruby main.rb"
+SERVER_CMD="ruby test/test_app/main.rb"
 
 def is_online?
   s = TCPSocket.new 'localhost', 3000

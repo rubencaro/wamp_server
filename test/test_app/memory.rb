@@ -1,5 +1,4 @@
-require 'log_helpers'
-module App
+module TestApp
   module Drivers
     class Memory
       @@db = {}
@@ -14,6 +13,7 @@ module App
       def self.init_session(ws)
         @@db['sessions'] ||= {}
         @@db['sessions'][ws.object_id] = {}
+        ws.object_id
       end
 
       def self.save_prefix(ws,prefix,uri)

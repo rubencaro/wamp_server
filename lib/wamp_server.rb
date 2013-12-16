@@ -1,12 +1,13 @@
 require 'websocket-eventmachine-server'
 require 'json'
-require 'log_helpers'
 require 'em-synchrony'
 
 #
 # see http://wamp.ws/spec
 #
 module WAMP
+
+  VERSION = '0.1'
 
   WELCOME = 0
   PREFIX = 1
@@ -18,28 +19,18 @@ module WAMP
   PUBLISH = 7
   EVENT = 8
 
-  class Server < WebSocket::EventMachine::Server
-    VERSION = '0.1'
+  RESPONSES = { :not_json => { :error => 'Message is not JSON !' }.to_json }
 
-    RESPONSES = { :not_json => { :error => 'Message is not JSON !' }.to_json }
-
-    def self.stamp
-      "#{self.name} #{VERSION}"
-    end
-
-    def self.welcome(ws)
-      App.init_session(ws)
-      H.log "Welcome #{ws.object_id}"
-      [WAMP::WELCOME, ws.object_id, 1, WAMP::Server.stamp].to_json
-    end
-
-    def self.stop
-      H.log "Terminating WebSocket Server"
-      EM.stop
-    end
+  def self.stamp
+    "#{self.name} #{VERSION}"
   end
 
-  # Start a new WAMP::Server
+  def self.stop_server
+    puts "Terminating WebSocket Server"
+    EM.stop
+  end
+
+  # Start a new Server
   #
   # You should pass some callbacks:
   #
@@ -52,51 +43,54 @@ module WAMP
   #   :onsubscribe => Called for SUBSCRIBE calls.
   #   :onunsubscribe => On UNSUBSCRIBE calls.
   #
-  def self.start_server(opts)
+  def self.start_server(a_module, opts = {})
+
+    # avoid more instances
+    a = a_module
+    a.extend a
+
     host = opts[:host] || '0.0.0.0'
     port = opts[:port] || '3000'
 
-    EM.synchrony do
+    EM.run do
 
-      trap("INT") { WAMP::Server.stop }
-      trap("TERM") { WAMP::Server.stop }
-      trap("KILL") { WAMP::Server.stop }
+      trap("INT") { WAMP.stop_server }
+      trap("TERM") { WAMP.stop_server }
+      trap("KILL") { WAMP.stop_server }
 
-      opts[:before_start].call if opts[:before_start].respond_to?(:call)
+      a.before_start if a.respond_to?(:before_start)
 
-      H.log "Listening on #{host}:#{port}", :clean => true
-      WAMP::Server.start(:host => host, :port => port) do |ws|
+      puts "Listening on #{host}:#{port}"
+      WebSocket::EventMachine::Server.start(:host => host, :port => port) do |ws|
 
         ws.onopen do
           Fiber.new do
-            sid = opts[:onwelcome].call ws: ws
-            ws.send [WAMP::WELCOME, sid, 1, WAMP::Server.stamp].to_json
+            sid = a.onwelcome ws: ws
+            ws.send [WAMP::WELCOME, sid, 1, WAMP.stamp].to_json
           end.resume
         end
 
         ws.onmessage do |msg, type|
-          H.log "Received message: #{msg}"
           Fiber.new do
             begin
               call = JSON.parse msg
             rescue JSON::ParserError
-              ws.send( WAMP::Server::RESPONSES[:not_json] )
+              ws.send( WAMP::RESPONSES[:not_json] )
             end
 
             if call.first == WAMP::CALL then
               # [ TYPE_ID_CALL , callID , procURI , ... ]
               _, callid, curie, *args = call
               begin
-                result = opts[:oncall].call ws: ws, curie: curie, args: args
+                result = a.oncall ws: ws, curie: curie, args: args
                 ws.send [WAMP::CALLRESULT, callid, result].to_json
               rescue => ex
-                H.log_ex ex
                 ws.send [WAMP::CALLERROR, callid, "http://error", ex.to_s].to_json
               end
             elsif call.first == WAMP::PUBLISH then
               # [ TYPE_ID_PUBLISH , topicURI , event , exclude , eligible ]
               _, curie, event, excluded, eligible = call
-              result = opts[:onpublish].call curie: curie
+              result = a.onpublish curie: curie
               dest = (result[:subscribed] & eligible) - excluded
               package = [WAMP::EVENT, result[:uri], event].to_json
               dest.each do |d|
@@ -104,25 +98,25 @@ module WAMP
               end
             elsif call.first == WAMP::SUBSCRIBE then
               # [ TYPE_ID_SUBSCRIBE , topicURI ]
-              opts[:onsubscribe].call ws: ws, curie: call[1]
+              a.onsubscribe ws: ws, curie: call[1]
             elsif call.first == WAMP::UNSUBSCRIBE then
               # [ TYPE_ID_UNSUBSCRIBE , topicURI ]
-              opts[:onunsubscribe].call ws: ws, curie: call[1]
+              a.onunsubscribe ws: ws, curie: call[1]
             elsif call.first == WAMP::PREFIX then
               # [ TYPE_ID_PREFIX , prefix, URI ]
               _, prefix, uri = call
-              opts[:onprefix].call ws: ws, uri: uri, prefix: prefix
+              a.onprefix ws: ws, uri: uri, prefix: prefix
             end
           end.resume
         end
 
         ws.onclose do
           Fiber.new do
-            opts[:onclose].call ws: ws
+            a.onclose ws: ws
           end.resume
         end
 
-      end # WAMP::Server.start
+      end # Server.start
     end # EM.synchrony
 
   end
