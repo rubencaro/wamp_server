@@ -1,6 +1,5 @@
 require 'websocket-eventmachine-server'
 require 'json'
-require 'em-synchrony'
 
 #
 # see http://wamp.ws/spec
@@ -117,7 +116,7 @@ module WAMP
         end
 
       end # Server.start
-    end # EM.synchrony
+    end # EM.run
 
   end
 

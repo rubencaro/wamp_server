@@ -5,6 +5,7 @@ require 'pty'
 require 'socket'
 require 'timeout'
 require 'json'
+require 'em-synchrony'
 
 require_relative 'log_helpers'
 
