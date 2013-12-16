@@ -5,7 +5,6 @@ require 'em-synchrony'
 class TestMain < TestCase
 
   def test_plain_ws
-    H.announce
     cb = lambda do |ws,msg,type,info|
       ws.close
     end
@@ -14,7 +13,6 @@ class TestMain < TestCase
   end
 
   def test_welcome
-    H.announce
     cb = lambda do |ws,msg,type,info|
       data = check_is_json msg
       check_is_welcome data
@@ -28,7 +26,6 @@ class TestMain < TestCase
   end
 
   def test_prefix
-    H.announce
     cb = lambda do |ws,msg,type,info|
       data = check_is_json msg
 
@@ -48,7 +45,6 @@ class TestMain < TestCase
   end
 
   def test_rpc
-    H.announce
     controller = 'test' # TestController
     action = 'get_db'   # get_db_action
     args = ['sessions'] # 'table' argument for get_db_action
@@ -85,7 +81,6 @@ class TestMain < TestCase
   end
 
   def test_subscribe_unsubscribe
-    H.announce
 
     uri = 'http://test/subscribe_test'
 
@@ -122,7 +117,6 @@ class TestMain < TestCase
   end
 
   def test_publish
-    H.announce
 
     sat_info = { :sats => {}, :sent => 0, :received => {} }
     n = 5
