@@ -50,30 +50,18 @@ module WAMP
     port = opts[:port] || '3000'
 
     EM.run do
-
       trap("INT") { WAMP.stop_server }
       trap("TERM") { WAMP.stop_server }
-      trap("KILL") { WAMP.stop_server }
 
       a_module.before_start if a_module.respond_to?(:before_start)
 
       puts "Listening on #{host}:#{port}"
       WebSocket::EventMachine::Server.start(:host => host, :port => port) do |ws|
-
-        ws.onopen do
-          onopen ws, a_module
-        end
-
-        ws.onmessage do |msg, type|
-          onmessage ws, msg, a_module
-        end
-
-        ws.onclose do
-          onclose ws, a_module
-        end
-
-      end # Server.start
-    end # EM.run
+        ws.onopen{ onopen ws, a_module }
+        ws.onmessage{ |msg, type| onmessage ws, msg, a_module }
+        ws.onclose{ onclose ws, a_module }
+      end
+    end
 
   end
 
@@ -98,17 +86,18 @@ module WAMP
         ws.send( WAMP::RESPONSES[:not_json] )
       end
 
-      if call.first == WAMP::CALL then
+      case call.first
+      when WAMP::CALL
         oncall ws, call, a_module
-      elsif call.first == WAMP::PUBLISH then
+      when WAMP::PUBLISH
         onpublish ws, call, a_module
-      elsif call.first == WAMP::SUBSCRIBE then
+      when WAMP::SUBSCRIBE
         # [ TYPE_ID_SUBSCRIBE , topicURI ]
         a_module.onsubscribe ws: ws, curie: call[1]
-      elsif call.first == WAMP::UNSUBSCRIBE then
+      when WAMP::UNSUBSCRIBE
         # [ TYPE_ID_UNSUBSCRIBE , topicURI ]
         a_module.onunsubscribe ws: ws, curie: call[1]
-      elsif call.first == WAMP::PREFIX then
+      when WAMP::PREFIX
         # [ TYPE_ID_PREFIX , prefix, URI ]
         _, prefix, uri = call
         a_module.onprefix ws: ws, uri: uri, prefix: prefix
