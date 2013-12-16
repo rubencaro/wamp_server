@@ -1,12 +1,11 @@
 require 'websocket-eventmachine-server'
 require 'json'
+require_relative 'version'
 
 #
 # see http://wamp.ws/spec
 #
 module WAMP
-
-  VERSION = '0.1'
 
   WELCOME = 0
   PREFIX = 1

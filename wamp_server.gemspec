@@ -1,4 +1,4 @@
-require_relative "lib/wamp_server"
+require_relative "lib/version"
 
 Gem::Specification.new do |s|
   s.name        = "wamp_server"
