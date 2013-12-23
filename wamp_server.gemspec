@@ -20,7 +20,9 @@ Gem::Specification.new do |s|
   s.required_ruby_version     = '>= 2.0.0'
 
   s.add_dependency 'websocket-eventmachine-server'
-
+  s.add_dependency 'json'
+  s.add_dependency 'json_pure'
+  
   s.add_development_dependency 'rake'
   s.add_development_dependency 'minitest'
   s.add_development_dependency 'websocket-eventmachine-client'
